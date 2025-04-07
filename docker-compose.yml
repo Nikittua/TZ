@@ -1,0 +1,34 @@
+services:
+  gitlab:
+    image: gitlab/gitlab-ce:17.10.3-ce.0
+    container_name: gitlab
+    hostname: gitlab.local
+    environment:
+      GITLAB_OMNIBUS_CONFIG: |
+        external_url 'http://<Your_IP>:8929'
+        gitlab_rails['initial_root_password'] = 'SecurePassword123!'
+    ports:
+      - '8929:8929'
+      - '443:443'
+      - '2424:2224'
+    volumes:
+      - gitlab_config:/etc/gitlab
+      - gitlab_logs:/var/log/gitlab
+      - gitlab_data:/var/opt/gitlab
+    restart: unless-stopped
+
+  runner:
+    image: gitlab/gitlab-runner:alpine-v17.10.0
+    container_name: runner
+    depends_on:
+      - gitlab
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - runner_config:/etc/gitlab-runner
+    restart: unless-stopped
+
+volumes:
+  gitlab_config:
+  gitlab_logs:
+  gitlab_data:
+  runner_config:
