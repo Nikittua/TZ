@@ -217,5 +217,12 @@ git push --set-upstream origin main
 - Runner status: `docker exec runner gitlab-runner list`
 - Force pipeline run: `git commit --allow-empty -m "Trigger pipeline"; git push`
 ```
-
 **Note:** Replace all `<...>` placeholders with your actual values before execution.
+```
+
+---
+
+### Links
+
+https://docs.docker.com/engine/install/ubuntu/#installation-methods https://www.youtube.com/watch?v=Rvh7OZbDJ_o&ab_channel=BuildWithLaL https://stackoverflow.com/questions/41174831/telegram-bot-chat-not-found https://ifedyukin.ru/blog/all/gitlab-ci-telegram/ https://stackoverflow.com/questions/70455939/how-to-send-notification-to-telegram-from-gitlab-pipeline https://stackoverflow.com/questions/38565952/how-to-receive-messages-in-group-chats-using-telegram-bot-api/56078309#56078309 https://kkm.solutions/faq/1119/
+
