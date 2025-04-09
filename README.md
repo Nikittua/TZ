@@ -1,93 +1,222 @@
-# demo
+
+# GitLab CI/CD Pipeline with Docker and Telegram Integration
+
+This guide provides step-by-step instructions to set up a GitLab instance with CI/CD pipeline, Docker integration, and Telegram notifications.
+
+## Prerequisites
+- Ubuntu server (recommended 22.04 LTS)
+- sudo privileges
+- Basic terminal knowledge
+
+---
+
+## 🐳 Docker Installation
+
+1. Update system packages and install dependencies:
+```bash
+sudo apt-get update
+sudo apt-get install ca-certificates curl -y
 
 
+2. Add Docker's official GPG key:
+```bash
+sudo install -m 0755 -d /etc/apt/keyrings
+sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+sudo chmod a+r /etc/apt/keyrings/docker.asc
+```
 
-## Getting started
+3. Add Docker repository:
+```bash
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
+  $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}") stable" | \
+  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+```
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+4. Install Docker components:
+```bash
+sudo apt-get update
+sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin -y
+```
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+---
 
-## Add your files
+## 🦊 GitLab Setup
 
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/topics/git/add_files/#add-files-to-a-git-repository) or push an existing Git repository with the following command:
+1. Clone the repository:
+```bash
+git clone https://github.com/Nikittua/TZ.git
+cd TZ
+```
+
+2. Configure Docker Compose:
+```bash
+vi docker-compose.yml
+```
+Replace these values:
+- `external_url: 'http://<YOUR_SERVER_IP>:8929'`
+- `GITLAB_ROOT_PASSWORD: SecurePassword123!`
+
+3. Start containers:
+```bash
+docker compose up -d
+```
+**Wait 5-7 minutes** for initialization
+
+4. Access GitLab at: `http://<YOUR_SERVER_IP>:8929`
+   - Login: `root`
+   - Password: `SecurePassword123!`
+
+---
+
+## 🤖 GitLab Runner Registration
+
+1. Get registration token:
+   - Go to: Admin -> CI/CD -> Runners
+   - Click "New instance runner"
+   - Add tags: `devops-test`
+   - Copy provided token
+
+2. Register runner:
+```bash
+docker exec -it runner gitlab-runner register \
+  --non-interactive \
+  --url 'http://<YOUR_SERVER_IP>:8929' \
+  --registration-token "<YOUR_TOKEN>" \
+  --executor "docker" \
+  --docker-image python:3.12-alpine \
+  --tag-list "devops-test" \
+  --description "Fixed Runner"
+```
+
+---
+
+## 🔧 CI/CD Configuration
+
+1. Create .gitignore:
+```bash
+echo "docker-compose.yml" > .gitignore
+```
+
+2. Create `.gitlab-ci.yml` with:
+```yaml
+stages:
+  - build
+  - lint
+  - test
+  - notify
+
+variables:
+  PIP_CACHE_DIR: "${CI_PROJECT_DIR}/.cache/pip"
+  FLAKE8_ARGS: "--max-line-length=120 --exclude=venv,__pycache__"
+
+cache:
+  paths:
+    - .cache/pip/
+
+build:
+  stage: build
+  tags:
+    - devops-test
+  image: python:3.12-alpine
+  script:
+    - pip install --cache-dir ${PIP_CACHE_DIR} -r requirements.txt
+
+lint:
+  stage: lint
+  tags:
+    - devops-test
+  image: python:3.12-alpine
+  script:
+    - pip install --cache-dir ${PIP_CACHE_DIR} -r requirements.txt
+    - flake8 ${FLAKE8_ARGS} app/
+  allow_failure: false 
+
+test:
+  stage: test
+  tags:
+    - devops-test
+  image: python:3.12-alpine
+  script:
+    - pip install --cache-dir ${PIP_CACHE_DIR} -r requirements.txt
+    - pytest app/tests/ -v
+
+notify_success:
+  stage: notify
+  tags:
+    - devops-test
+  image: curlimages/curl:8.00.1
+  script:
+    - sh scripts/ci-notify.sh ✅
+  rules:
+    - when: on_success
+
+notify_failure:
+  stage: notify
+  tags:
+    - devops-test
+  image: curlimages/curl:8.00.1
+  script:
+    - sh scripts/ci-notify.sh ❌
+  rules:
+    - when: on_failure
 
 ```
-cd existing_repo
-git remote add origin http://192.168.213.128:8929/root/demo.git
-git branch -M main
-git push -uf origin main
+
+---
+
+## 📮 Telegram Integration
+
+1. Create Telegram Bot:
+   - Message @BotFather with `/newbot`
+   - Save bot token (`TG_BOT_TOKEN`)
+
+2. Create Telegram Channel:
+   - Add your bot as admin
+   - Get Channel ID using @getmyid_bot
+   - Save channel ID (`TG_CHAT_ID`)
+
+3. Add variables to GitLab:
+   - Project Settings -> CI/CD -> Variables
+   - Add `TG_BOT_TOKEN` and `TG_CHAT_ID`
+
+4. Test notification:
+```bash
+curl -X POST https://api.telegram.org/<TG_BOT_TOKEN>/sendMessage \
+  -d "chat_id=<TG_CHAT_ID>" \
+  -d "text=Hello from the Telegram API!"
 ```
 
-## Integrate with your tools
+---
 
-- [ ] [Set up project integrations](http://192.168.213.128:8929/root/demo/-/settings/integrations)
+## 🚀 Deployment
 
-## Collaborate with your team
+1. Configure git remote:
+```bash
+git remote remove origin
+git remote add origin http://<YOUR_SERVER_IP>:8929/root/tz.git
+```
 
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/user/project/merge_requests/auto_merge/)
+2. Push code:
+```bash
+git add .
+git commit -am "Initial commit"
+git push --set-upstream origin main
+```
 
-## Test and Deploy
+3. Monitor pipeline in GitLab:
+   - Go to CI/CD -> Pipelines
+   - Successful pipeline will show ✅ in Telegram
+![Pasted image 20250408001048](https://github.com/user-attachments/assets/8c3428d0-8198-4363-8a47-a3ee0cb82c53)
+![Pasted image 20250408001103](https://github.com/user-attachments/assets/a4e850b9-1767-414c-9bda-cbf66fa30006)
 
-Use the built-in continuous integration in GitLab.
 
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+---
 
-***
+## 🔄 Troubleshooting
+- Check container logs: `docker compose logs`
+- Runner status: `docker exec runner gitlab-runner list`
+- Force pipeline run: `git commit --allow-empty -m "Trigger pipeline"; git push`
+```
 
-# Editing this README
-
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
-
-## Suggestions for a good README
-
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
-
-## Name
-Choose a self-explaining name for your project.
-
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
-
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
-
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
-
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
-
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
-
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
-
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
-
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
-
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
-
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
-
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
-
-## License
-For open source projects, say how it is licensed.
-
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+**Note:** Replace all `<...>` placeholders with your actual values before execution.
