@@ -4,9 +4,8 @@
 This guide provides step-by-step instructions to set up a GitLab instance with CI/CD pipeline, Docker integration, and Telegram notifications.
 
 ## Prerequisites
-- Ubuntu server (recommended 22.04 LTS)
+- Ubuntu server (22.04LTS, 8RAM, 8CPU)
 - sudo privileges
-- Basic terminal knowledge
 
 ---
 
