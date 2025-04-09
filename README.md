@@ -15,7 +15,7 @@ This guide provides step-by-step instructions to set up a GitLab instance with C
 ```bash
 sudo apt-get update
 sudo apt-get install ca-certificates curl -y
-
+```
 
 2. Add Docker's official GPG key:
 ```bash
